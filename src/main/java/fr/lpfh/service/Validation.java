@@ -17,7 +17,23 @@ public final class Validation {
     private static final Pattern TEL = Pattern.compile("^(0[1-9]\\d{8}|\\+33[1-9]\\d{8})$");
     private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
+    // Nom / prénom : lettres (accents compris), espaces, apostrophes et tirets.
+    private static final Pattern NOM = Pattern.compile("^\\p{L}[\\p{L} '’\\-]*$");
+
     private Validation() {
+    }
+
+    public static boolean nomValide(String nom) {
+        return nom != null && NOM.matcher(nom.trim()).matches();
+    }
+
+    /** Sexe déduit du 1er chiffre du n° de sécu : 1 = homme (H), 2 = femme (F). */
+    public static String sexeDepuisNumSecu(String num) {
+        String n = normaliserNumSecu(num);
+        if (n.startsWith("1")) {
+            return "H";
+        }
+        return n.startsWith("2") ? "F" : null;
     }
 
     /** Supprime espaces, points et tirets ; majuscules (Corse 2A/2B). */

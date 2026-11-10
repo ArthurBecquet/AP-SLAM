@@ -121,7 +121,152 @@ public class PreAdmissionServiceTest {
         PreAdmissionService.Resultat r = service.enregistrer(s);
         assertFalse(r.ok());
         assertTrue(r.erreurs().containsKey("numSecu"));
+        assertTrue(r.erreurs().containsKey("telephone"));
         assertTrue(r.erreurs().containsKey("dateEntree"));
+        assertTrue(dao.enregistrements.isEmpty(), "Rien ne doit être enregistré");
+    }
+
+    // ---------------------------------------------------------------
+    //  Séance 8 — enregistrement complet
+    // ---------------------------------------------------------------
+
+    /** Raccourci : la saisie doit être refusée, avec une erreur sur le champ donné, et rien n'est enregistré. */
+    private void assertRefus(PreAdmissionSaisie s, String champEnErreur) {
+        PreAdmissionService.Resultat r = service.enregistrer(s);
+        assertFalse(r.ok(), "La saisie aurait dû être refusée (champ " + champEnErreur + ")");
+        assertTrue(r.erreurs().containsKey(champEnErreur), "Erreur attendue sur " + champEnErreur + " : " + r.erreurs());
+        assertTrue(dao.enregistrements.isEmpty(), "Rien ne doit être enregistré");
+    }
+
+    @Test
+    void testEnregistrementCompletAvecLiaisons() {
+        PreAdmissionSaisie s = saisieValide();
+        s.numOrganisme = 1;
+        s.email = "paul.roux@exemple.test";
+        PreAdmissionService.Resultat r = service.enregistrer(s);
+        assertTrue(r.ok(), "Erreurs : " + r.erreurs());
+        assertEquals(1, r.numPreAdmission());
+        PreAdmissionDAO.Enregistrement e = dao.enregistrements.get(0);
+        assertEquals("178125917803324", e.numSecu(), "Le n° de sécu est enregistré sans espaces");
+        assertEquals("H", e.sexe(), "Sexe déduit du n° de sécu (1 = homme)");
+        assertEquals(LocalDate.of(1978, 12, 5), e.dateNaissance());
+        assertEquals(1, e.numService(), "Liaison vers le service");
+        assertEquals(1, e.numOrganisme(), "Liaison vers la caisse d'assurance maladie (couverture)");
+        assertEquals(2, e.numMutuelle(), "Liaison vers la mutuelle");
+        assertEquals("MG-555", e.numeroAdherent());
+        assertEquals(3, e.dureePrevue());
+        assertEquals("Opération du genou", e.motif());
+        assertEquals("épouse", e.pcLien());
+    }
+
+    @Test
+    void testChampsFacultatifsVides() {
+        PreAdmissionSaisie s = saisieValide();
+        s.email = "";
+        s.dureePrevue = "";
+        s.numOrganisme = null;
+        s.numMutuelle = null;
+        s.numeroAdherent = "";
+        s.pcLien = "";
+        PreAdmissionService.Resultat r = service.enregistrer(s);
+        assertTrue(r.ok(), "Les champs facultatifs peuvent rester vides : " + r.erreurs());
+        assertNull(dao.enregistrements.get(0).dureePrevue());
+        assertNull(dao.enregistrements.get(0).numOrganisme());
+    }
+
+    @Test
+    void testRefusChaqueChampObligatoireManquant() {
+        PreAdmissionSaisie s;
+        s = saisieValide(); s.numSecuriteSociale = ""; assertRefus(s, "numSecu");
+        s = saisieValide(); s.nom = "";               assertRefus(s, "nom");
+        s = saisieValide(); s.prenom = "  ";          assertRefus(s, "prenom");
+        s = saisieValide(); s.dateNaissance = "";     assertRefus(s, "dateNaissance");
+        s = saisieValide(); s.adresse = "";           assertRefus(s, "adresse");
+        s = saisieValide(); s.ville = "";             assertRefus(s, "ville");
+        s = saisieValide(); s.telephone = "";         assertRefus(s, "telephone");
+        s = saisieValide(); s.numService = null;      assertRefus(s, "service");
+        s = saisieValide(); s.dateEntree = "";        assertRefus(s, "dateEntree");
+        s = saisieValide(); s.motif = "";             assertRefus(s, "motif");
+        s = saisieValide(); s.pcNom = "";             assertRefus(s, "pcNom");
+        s = saisieValide(); s.pcPrenom = "";          assertRefus(s, "pcPrenom");
+        s = saisieValide(); s.pcTelephone = "";       assertRefus(s, "pcTelephone");
+    }
+
+    @Test
+    void testRefusFormatDate() {
+        PreAdmissionSaisie s;
+        s = saisieValide(); s.dateNaissance = "1978-12-05"; assertRefus(s, "dateNaissance");
+        s = saisieValide(); s.dateNaissance = "31/02/1978"; assertRefus(s, "dateNaissance");
+        s = saisieValide(); s.dateNaissance = LocalDate.now().plusDays(1).format(Validation.FORMAT_DATE);
+        assertRefus(s, "dateNaissance");
+        s = saisieValide(); s.dateEntree = "demain";        assertRefus(s, "dateEntree");
+        s = saisieValide(); s.dateEntree = LocalDate.now().minusDays(1).format(Validation.FORMAT_DATE);
+        assertRefus(s, "dateEntree");
+    }
+
+    @Test
+    void testRefusFormatTelephone() {
+        PreAdmissionSaisie s;
+        s = saisieValide(); s.telephone = "06 11 22 33";      assertRefus(s, "telephone");
+        s = saisieValide(); s.telephone = "abcdefghij";       assertRefus(s, "telephone");
+        s = saisieValide(); s.pcTelephone = "0011223344";     assertRefus(s, "pcTelephone");
+        // Formats acceptés
+        assertTrue(Validation.telephoneValide("06.11.22.33.44"));
+        assertTrue(Validation.telephoneValide("+33 6 11 22 33 44"));
+    }
+
+    @Test
+    void testRefusFormatNumSecu() {
+        PreAdmissionSaisie s;
+        s = saisieValide(); s.numSecuriteSociale = "1 78 12 59 178 033";     assertRefus(s, "numSecu"); // trop court
+        s = saisieValide(); s.numSecuriteSociale = "3 78 12 59 178 033 24";  assertRefus(s, "numSecu"); // ne commence pas par 1 ou 2
+        s = saisieValide(); s.numSecuriteSociale = "1 78 12 59 178 033 25";  assertRefus(s, "numSecu"); // clé fausse
+    }
+
+    @Test
+    void testRefusAutresFormats() {
+        PreAdmissionSaisie s;
+        s = saisieValide(); s.email = "paul.roux";            assertRefus(s, "email");
+        s = saisieValide(); s.dureePrevue = "trois";          assertRefus(s, "duree");
+        s = saisieValide(); s.dureePrevue = "-2";             assertRefus(s, "duree");
+        s = saisieValide(); s.nom = "Roux123";                assertRefus(s, "nom");
+        s = saisieValide(); s.motif = "x".repeat(256);        assertRefus(s, "motif");
+        s = saisieValide(); s.numMutuelle = null;             assertRefus(s, "numeroAdherent"); // n° d'adhérent sans mutuelle
+    }
+
+    @Test
+    void testRefusServiceOuCouvertureInconnus() {
+        PreAdmissionSaisie s;
+        s = saisieValide(); s.numService = 999;   assertRefus(s, "service");
+        s = saisieValide(); s.numOrganisme = 999; assertRefus(s, "organisme");
+        s = saisieValide(); s.numMutuelle = 999;  assertRefus(s, "mutuelle");
+    }
+
+    @Test
+    void testErreurBaseMessageClair() {
+        dao.panne = true;
+        PreAdmissionService.Resultat r = service.enregistrer(saisieValide());
+        assertFalse(r.ok());
+        assertTrue(r.erreurs().containsKey("global"), "Un message d'erreur clair est renvoyé à l'écran");
+    }
+
+    @Test
+    void testRefusAccesPourChaqueAutreProfil() {
+        for (String compte : new String[]{"medecin.test", "admin.test", "informaticien.test"}) {
+            Session.ouvrir(auth.connecter(compte, FakeUtilisateurDAO.MDP).orElseThrow());
+            assertThrows(AccesRefuseException.class, () -> service.enregistrer(saisieValide()), compte + " : enregistrement");
+            assertThrows(AccesRefuseException.class, () -> service.rechercherPatient("162035912204504"), compte + " : recherche");
+            assertThrows(AccesRefuseException.class, () -> service.lister(false), compte + " : liste");
+            assertThrows(AccesRefuseException.class, () -> service.services(), compte + " : écran (listes)");
+        }
+        assertTrue(dao.enregistrements.isEmpty(), "Rien ne doit être enregistré");
+    }
+
+    @Test
+    void testListePartageeEtFiltre() {
+        service.enregistrer(saisieValide());
+        assertEquals(1, service.lister(false).size());
+        assertEquals(1, service.lister(true).size(), "Créée par la secrétaire connectée");
     }
 
     @Test

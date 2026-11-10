@@ -42,7 +42,7 @@ public class PreAdmissionControleur {
     public void ouvrirNouvelle() {
         AuthService.exiger(Profil.SECRETAIRE);
         NouvellePreAdmissionPanel vue = new NouvellePreAdmissionPanel();
-        vue.setListes(service.services(), service.mutuelles());
+        vue.setListes(service.services(), service.organismes(), service.mutuelles());
 
         vue.getRechercher().addActionListener(e -> principal.ouvrir(() -> {
             if (!Validation.numSecuValide(vue.getNumSecu())) {
@@ -60,8 +60,9 @@ public class PreAdmissionControleur {
             try {
                 PreAdmissionService.Resultat r = service.enregistrer(vue.getSaisie());
                 if (r.ok()) {
-                    ouvrirListe("Pré-admission n° " + r.numPreAdmission()
-                            + " enregistrée. Le dossier a été transmis au médecin du service.");
+                    ouvrirListe("Pré-admission n° " + r.numPreAdmission() + " enregistrée"
+                            + (r.nouveauPatient() ? " (nouveau patient inscrit)" : "")
+                            + ". Le dossier a été transmis au médecin du service.");
                 } else {
                     vue.afficherErreurs(r.erreurs());
                 }

@@ -34,13 +34,26 @@ public class JdbcPreAdmissionDAO implements PreAdmissionDAO {
                 }
                 Date naiss = rs.getDate("date_naissance");
                 int mut = rs.getInt("num_mutuelle");
-                return Optional.of(new Patient(rs.getInt("num_patient"), rs.getString("num_securite_sociale"),
+                Integer numMutuelle = rs.wasNull() ? null : mut;
+                int numPatient = rs.getInt("num_patient");
+                return Optional.of(new Patient(numPatient, rs.getString("num_securite_sociale"),
                         rs.getString("nom"), rs.getString("prenom"), naiss == null ? null : naiss.toLocalDate(),
                         rs.getString("adresse"), rs.getString("ville"), rs.getString("telephone"), rs.getString("email"),
-                        rs.wasNull() ? null : mut, rs.getString("numero_adherent")));
+                        numMutuelle, rs.getString("numero_adherent"), organismeDuPatient(cnx, numPatient)));
             }
         } catch (SQLException e) {
             throw new DaoException("Recherche du patient impossible", e);
+        }
+    }
+
+    /** Caisse d'assurance maladie la plus récente du patient (table couvrir), ou null. */
+    private Integer organismeDuPatient(Connection cnx, int numPatient) throws SQLException {
+        String sql = "SELECT num_organisme FROM couvrir WHERE num_patient = ? ORDER BY date_debut DESC LIMIT 1";
+        try (PreparedStatement ps = cnx.prepareStatement(sql)) {
+            ps.setInt(1, numPatient);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : null;
+            }
         }
     }
 
@@ -52,6 +65,11 @@ public class JdbcPreAdmissionDAO implements PreAdmissionDAO {
     @Override
     public List<Reference> listerMutuelles() {
         return references("SELECT num_mutuelle, nom_mutuelle FROM mutuelle ORDER BY nom_mutuelle");
+    }
+
+    @Override
+    public List<Reference> listerOrganismes() {
+        return references("SELECT num_organisme, nom_organisme FROM organisme ORDER BY nom_organisme");
     }
 
     private List<Reference> references(String sql) {
@@ -106,6 +124,7 @@ public class JdbcPreAdmissionDAO implements PreAdmissionDAO {
             cnx.setAutoCommit(false);
             try {
                 int numPatient = e.numPatientExistant() == null ? insererPatient(cnx, e) : majMutuelle(cnx, e);
+                lierCouverture(cnx, e, numPatient);
                 int numPc = insererPersonneConfiance(cnx, e);
                 int numPa = insererPreAdmission(cnx, e, numPatient, numPc);
                 cnx.commit();
@@ -121,28 +140,57 @@ public class JdbcPreAdmissionDAO implements PreAdmissionDAO {
 
     private int insererPatient(Connection cnx, Enregistrement e) throws SQLException {
         String sql = """
-                INSERT INTO patient (num_securite_sociale, nom, prenom, date_naissance, adresse, ville, telephone, email,
+                INSERT INTO patient (num_securite_sociale, nom, prenom, date_naissance, sexe, adresse, ville, telephone, email,
                                      num_mutuelle, numero_adherent, date_debut_adhesion)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (PreparedStatement ps = cnx.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, e.numSecu());
             ps.setString(2, e.nom());
             ps.setString(3, e.prenom());
             ps.setDate(4, Date.valueOf(e.dateNaissance()));
-            ps.setString(5, e.adresse());
-            ps.setString(6, e.ville());
-            ps.setString(7, e.telephone());
-            setTexteOuNull(ps, 8, e.email());
-            setEntierOuNull(ps, 9, e.numMutuelle());
-            setTexteOuNull(ps, 10, e.numeroAdherent());
+            setTexteOuNull(ps, 5, e.sexe());
+            ps.setString(6, e.adresse());
+            ps.setString(7, e.ville());
+            ps.setString(8, e.telephone());
+            setTexteOuNull(ps, 9, e.email());
+            setEntierOuNull(ps, 10, e.numMutuelle());
+            setTexteOuNull(ps, 11, e.numeroAdherent());
             if (e.numMutuelle() != null) {
-                ps.setDate(11, Date.valueOf(LocalDate.now()));
+                ps.setDate(12, Date.valueOf(LocalDate.now()));
             } else {
-                ps.setNull(11, Types.DATE);
+                ps.setNull(12, Types.DATE);
             }
             ps.executeUpdate();
             return cle(ps);
+        }
+    }
+
+    /**
+     * Liaison « Couvrir » : rattache le patient à sa caisse d'assurance maladie.
+     * Si la liaison existe déjà, on n'y touche pas (pas de doublon).
+     */
+    private void lierCouverture(Connection cnx, Enregistrement e, int numPatient) throws SQLException {
+        if (e.numOrganisme() == null) {
+            return;
+        }
+        String existe = "SELECT 1 FROM couvrir WHERE num_patient = ? AND num_organisme = ?";
+        try (PreparedStatement ps = cnx.prepareStatement(existe)) {
+            ps.setInt(1, numPatient);
+            ps.setInt(2, e.numOrganisme());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return;
+                }
+            }
+        }
+        String sql = "INSERT INTO couvrir (num_patient, num_organisme, numero_adherent, date_debut) VALUES (?, ?, ?, ?)";
+        try (PreparedStatement ps = cnx.prepareStatement(sql)) {
+            ps.setInt(1, numPatient);
+            ps.setInt(2, e.numOrganisme());
+            ps.setString(3, e.numSecu());
+            ps.setDate(4, Date.valueOf(LocalDate.now()));
+            ps.executeUpdate();
         }
     }
 

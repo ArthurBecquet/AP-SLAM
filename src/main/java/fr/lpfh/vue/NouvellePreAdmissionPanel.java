@@ -34,6 +34,7 @@ public class NouvellePreAdmissionPanel extends JPanel {
             adresse = champTexte(), ville = champTexte(), telephone = champTexte(), email = champTexte();
     private final JComboBox<Reference> service = new JComboBox<>();
     private final JTextField dateEntree = champTexte(), duree = champTexte(), motif = champTexte();
+    private final JComboBox<Reference> organisme = new JComboBox<>();
     private final JComboBox<Reference> mutuelle = new JComboBox<>();
     private final JTextField numeroAdherent = champTexte();
     private final JLabel rappelMutuelle = Theme.badge("⚠ Vérifier avec le patient si sa mutuelle a changé", Theme.ORANGE, Theme.ORANGE_CLAIR);
@@ -101,13 +102,13 @@ public class NouvellePreAdmissionPanel extends JPanel {
         ch.add(hosp, BorderLayout.CENTER);
         ajouterCarte(col, ch);
 
-        // Mutuelle
+        // Assurance maladie et mutuelle
         JPanel gm = Theme.grille(3);
-        gm.add(Theme.champ("Nom de la mutuelle", mutuelle));
-        gm.add(Theme.champ("N° d'adhérent", numeroAdherent));
-        gm.add(new JLabel());
+        gm.add(Theme.champ("Caisse d'assurance maladie", organisme));
+        gm.add(Theme.champ("Mutuelle", mutuelle));
+        gm.add(Theme.champ("N° d'adhérent mutuelle", numeroAdherent));
         rappelMutuelle.setVisible(false);
-        JPanel cm = Theme.carte("Mutuelle", rappelMutuelle);
+        JPanel cm = Theme.carte("Assurance et mutuelle", rappelMutuelle);
         cm.add(gm, BorderLayout.CENTER);
         ajouterCarte(col, cm);
 
@@ -163,11 +164,15 @@ public class NouvellePreAdmissionPanel extends JPanel {
         col.add(Box.createVerticalStrut(16));
     }
 
-    public void setListes(List<Reference> services, List<Reference> mutuelles) {
+    public void setListes(List<Reference> services, List<Reference> organismes, List<Reference> mutuelles) {
         DefaultComboBoxModel<Reference> ms = new DefaultComboBoxModel<>();
         ms.addElement(CHOISIR);
         services.forEach(ms::addElement);
         service.setModel(ms);
+        DefaultComboBoxModel<Reference> mo = new DefaultComboBoxModel<>();
+        mo.addElement(AUCUNE);
+        organismes.forEach(mo::addElement);
+        organisme.setModel(mo);
         DefaultComboBoxModel<Reference> mm = new DefaultComboBoxModel<>();
         mm.addElement(AUCUNE);
         mutuelles.forEach(mm::addElement);
@@ -195,6 +200,7 @@ public class NouvellePreAdmissionPanel extends JPanel {
             ville.setText(p.ville());
             telephone.setText(p.telephone());
             email.setText(p.email() == null ? "" : p.email());
+            selectionner(organisme, p.numOrganisme());
             selectionner(mutuelle, p.numMutuelle());
             numeroAdherent.setText(p.numeroAdherent() == null ? "" : p.numeroAdherent());
             etat("✓ Patient déjà inscrit – infos pré-remplies", Theme.VERT, Theme.VERT_CLAIR);
@@ -242,6 +248,8 @@ public class NouvellePreAdmissionPanel extends JPanel {
         s.dateEntree = dateEntree.getText();
         s.dureePrevue = duree.getText();
         s.motif = motif.getText();
+        Reference o = (Reference) organisme.getSelectedItem();
+        s.numOrganisme = o == null || o.id() == 0 ? null : o.id();
         Reference m = (Reference) mutuelle.getSelectedItem();
         s.numMutuelle = m == null || m.id() == 0 ? null : m.id();
         s.numeroAdherent = numeroAdherent.getText();

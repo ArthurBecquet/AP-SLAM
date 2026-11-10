@@ -19,6 +19,8 @@ public class PreAdmissionSaisie {
     public String dateEntree = "";
     public String dureePrevue = "";
     public String motif = "";
+    // Assurance maladie : caisse qui couvre le patient (table couvrir)
+    public Integer numOrganisme;
     // Mutuelle (modifiable si le patient a changé de mutuelle)
     public Integer numMutuelle;
     public String numeroAdherent = "";

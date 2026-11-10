@@ -20,7 +20,15 @@ public class FakePreAdmissionDAO implements PreAdmissionDAO {
 
     public FakePreAdmissionDAO() {
         patients.add(new Patient(1, "162035912204504", "GIRARD", "Thomas", LocalDate.of(1962, 3, 14),
-                "12 rue des Lilas", "59400 Cambrai", "0612345678", null, 1, "HM-784512"));
+                "12 rue des Lilas", "59400 Cambrai", "0612345678", null, 1, "HM-784512", 1));
+    }
+
+    /** Mettre à true pour simuler une panne de la base au moment de l'enregistrement. */
+    public boolean panne = false;
+
+    @Override
+    public List<Reference> listerOrganismes() {
+        return List.of(new Reference(1, "CPAM du Nord"), new Reference(2, "MSA Nord-Pas de Calais"));
     }
 
     @Override
@@ -53,6 +61,9 @@ public class FakePreAdmissionDAO implements PreAdmissionDAO {
 
     @Override
     public int enregistrer(Enregistrement e) {
+        if (panne) {
+            throw new fr.lpfh.dao.DaoException("Panne simulée", null);
+        }
         enregistrements.add(e);
         return enregistrements.size();
     }
