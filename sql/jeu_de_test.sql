@@ -1,8 +1,8 @@
 -- =====================================================================
 --  LPFH – Jeu de données de TEST (données 100 % FICTIVES)
 --  À exécuter sur une base créée avec lpfh_preadmission.sql (partie B).
---  Mot de passe des 4 comptes de test : Lpfh2026!
---  (stocké uniquement sous forme de hash bcrypt, généré par password_hash())
+--  Le mot de passe des comptes de test n'est pas écrit dans le dépôt :
+--  il est communiqué par l'équipe (seul son hash bcrypt est stocké ici).
 -- =====================================================================
 
 INSERT INTO profil (num_profil, libelle_profil, description_profil) VALUES
@@ -18,7 +18,7 @@ INSERT INTO service (num_service, libelle_service, localisation, telephone_servi
  (4, 'Administration', 'Bâtiment C – RDC',       '03 27 00 00 04'),
  (5, 'Informatique',   'Bâtiment C – sous-sol',  '03 27 00 00 05');
 
--- 4 comptes de test (un par profil) — mot de passe : Lpfh2026!
+-- 4 comptes de test (un par profil) + une 2e secrétaire — même mot de passe pour tous (hash bcrypt)
 INSERT INTO personnel (num_personnel, nom, prenom, identifiant_connexion, mot_de_passe_hash, email_pro, date_arrivee, statut_compte, num_service) VALUES
  (1, 'DURAND',  'Sophie', 'secretaire.test',    '$2y$10$2T6zrSyQbU2xMzJiisguq.J6eF91OViuCs3KxHAJXXzm6TwcAaVLm', 'secretaire.test@lpfh.test',    '2024-09-01', 'actif', 1),
  (2, 'MARTIN',  'Paul',   'medecin.test',       '$2y$10$2T6zrSyQbU2xMzJiisguq.J6eF91OViuCs3KxHAJXXzm6TwcAaVLm', 'medecin.test@lpfh.test',       '2020-01-06', 'actif', 1),
