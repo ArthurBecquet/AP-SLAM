@@ -1,3 +1,5 @@
-vendor/
-.phpunit.result.cache
-.phpunit.cache/
+target/
+out/
+.idea/workspace.xml
+.idea/shelf/
+*.class
