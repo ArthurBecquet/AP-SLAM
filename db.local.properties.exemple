@@ -1,0 +1,9 @@
+# Copier ce fichier en « db.local.properties » (même dossier) puis le remplir.
+# db.local.properties est ignoré par Git : le mot de passe ne part jamais sur GitHub.
+
+# Adresse du serveur LAMP de test (groupe SISR) et nom de la base
+db.url=jdbc:mysql://ADRESSE_DU_SERVEUR:3306/clinique_lfph?useUnicode=true&characterEncoding=utf8&serverTimezone=Europe/Paris
+
+# Compte applicatif dédié (jamais root)
+db.user=lpfh_app
+db.password=A_REMPLIR

@@ -3,3 +3,5 @@ out/
 .idea/workspace.xml
 .idea/shelf/
 *.class
+# Connexion locale à la base (contient le mot de passe) : jamais versionnée
+db.local.properties

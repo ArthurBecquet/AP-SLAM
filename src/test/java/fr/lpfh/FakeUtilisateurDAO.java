@@ -2,8 +2,11 @@ package fr.lpfh;
 
 import fr.lpfh.dao.UtilisateurDAO;
 import fr.lpfh.modele.CompteConnexion;
+import fr.lpfh.service.MotDePasse;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
+import java.util.Base64;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,9 +18,18 @@ import java.util.Optional;
  */
 public class FakeUtilisateurDAO implements UtilisateurDAO {
 
-    /** Hash bcrypt de « Lpfh2026! » (le même que dans sql/jeu_de_test.sql, généré par PHP). */
-    public static final String HASH = "$2y$10$2T6zrSyQbU2xMzJiisguq.J6eF91OViuCs3KxHAJXXzm6TwcAaVLm";
-    public static final String MDP = "Lpfh2026!";
+    /**
+     * Mot de passe tiré au hasard à chaque lancement des tests : aucun mot de passe n'est écrit en clair
+     * dans le code versionné. Son hash BCrypt est calculé au démarrage, comme le ferait l'application.
+     */
+    public static final String MDP = motDePasseAleatoire();
+    public static final String HASH = MotDePasse.hacher(MDP);
+
+    private static String motDePasseAleatoire() {
+        byte[] octets = new byte[12];
+        new SecureRandom().nextBytes(octets);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(octets) + "!9a";
+    }
 
     private record Ligne(CompteConnexion compte, LocalDate debut, LocalDate fin) {
     }
