@@ -1,7 +1,7 @@
-target/
-out/
-.idea/workspace.xml
-.idea/shelf/
-*.class
-# Connexion locale à la base (contient le mot de passe) : jamais versionnée
-db.local.properties
+vendor/
+composer.lock
+.phpunit.cache/
+.phpunit.result.cache
+.idea/
+# Connexion à la base (contient le mot de passe) : jamais versionnée
+app/config.local.php

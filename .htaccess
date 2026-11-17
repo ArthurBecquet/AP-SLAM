@@ -1,0 +1,6 @@
+# Seules les pages de l'application sont accessibles depuis le navigateur.
+# Code, configuration, SQL, tests et documents : accès refusé (403).
+RedirectMatch 403 /(app|sql|tests|vendor|docs)(/|$)
+<FilesMatch "^(composer\.(json|lock)|phpunit\.xml|README\.md|\.git.*)$">
+    Require all denied
+</FilesMatch>
